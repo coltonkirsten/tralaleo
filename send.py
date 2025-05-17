@@ -1,26 +1,21 @@
 #!/usr/bin/env python3
 """
-send.py
+send.py - Morse code LED transmitter
 
 Usage:
-    ./send.py <count> "<message>"
+    ./send.py <count> "<message>" [--rate RATE]
 
-Example:
-    ./send.py 4 "hello ESP32"
+    <count>    Number of times to repeat the message
+    <message>  The message to send (letters, digits, spaces)
+    --rate     Duration of one DOT in seconds (default: 0.05)
 """
-import sys
+
+import argparse
 import time
 import RPi.GPIO as GPIO
 
 # GPIO pin where the LED is connected
 LED_PIN = 17
-
-# Timing definitions (seconds)
-DOT_DURATION   = 0.05
-DASH_DURATION  = DOT_DURATION * 3
-SYMBOL_GAP     = DOT_DURATION      # between dots/dashes
-LETTER_GAP     = DOT_DURATION * 3  # between letters
-WORD_GAP       = DOT_DURATION * 7  # between words
 
 # Morse code mapping
 MORSE_CODE = {
@@ -34,61 +29,48 @@ MORSE_CODE = {
     '1': '.----', '2': '..---', '3': '...--', '4': '....-',
     '5': '.....', '6': '-....', '7': '--...', '8': '---..',
     '9': '----.', '0': '-----',
-    ' ': '/'  # we'll treat '/' as word separator
+    ' ': '/'  # placeholder for word gap
 }
 
-def blink_dot():
+def blink(duration):
     GPIO.output(LED_PIN, GPIO.HIGH)
-    time.sleep(DOT_DURATION)
+    time.sleep(duration)
     GPIO.output(LED_PIN, GPIO.LOW)
 
-def blink_dash():
-    GPIO.output(LED_PIN, GPIO.HIGH)
-    time.sleep(DASH_DURATION)
-    GPIO.output(LED_PIN, GPIO.LOW)
+def send_message(msg, dot_dur):
+    dash_dur   = dot_dur * 3
+    sym_gap    = dot_dur
+    letter_gap = dot_dur * 3
+    word_gap   = dot_dur * 7
 
-def send_message(message):
-    for char in message:
-        code = MORSE_CODE.get(char.upper(), '')
+    for ch in msg.upper():
+        code = MORSE_CODE.get(ch, '')
         if code == '/':
-            # word gap
-            time.sleep(WORD_GAP)
+            time.sleep(word_gap)
             continue
         if not code:
-            # unknown character, skip
-            continue
-        for symbol in code:
-            if symbol == '.':
-                blink_dot()
-            elif symbol == '-':
-                blink_dash()
-            # gap between symbols
-            time.sleep(SYMBOL_GAP)
-        # gap between letters (already waited one SYMBOL_GAP after last symbol)
-        time.sleep(LETTER_GAP - SYMBOL_GAP)
+            continue  # skip unknown characters
+        for sym in code:
+            blink(dot_dur if sym == '.' else dash_dur)
+            time.sleep(sym_gap)
+        time.sleep(letter_gap - sym_gap)
 
 def main():
-    if len(sys.argv) != 3:
-        print(f"Usage: {sys.argv[0]} <count> \"<message>\"")
-        sys.exit(1)
+    p = argparse.ArgumentParser(description="Morse LED sender")
+    p.add_argument("count",  type=int,   help="Repetition count")
+    p.add_argument("message",type=str,   help="Text to transmit")
+    p.add_argument("--rate", type=float, default=0.05,
+                   help="DOT duration in seconds")
+    args = p.parse_args()
 
-    try:
-        count = int(sys.argv[1])
-    except ValueError:
-        print("First argument must be an integer (number of times).")
-        sys.exit(1)
-    message = sys.argv[2]
-
-    # Setup GPIO
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(LED_PIN, GPIO.OUT)
     GPIO.output(LED_PIN, GPIO.LOW)
 
     try:
-        for i in range(count):
-            send_message(message)
-            # small pause between repetitions
-            time.sleep(WORD_GAP)
+        for _ in range(args.count):
+            send_message(args.message, args.rate)
+            time.sleep(args.rate * 7)  # word gap between repeats
     finally:
         GPIO.cleanup()
 
