@@ -16,7 +16,7 @@ import RPi.GPIO as GPIO
 LED_PIN = 17
 
 # Timing definitions (seconds)
-DOT_DURATION   = 0.2
+DOT_DURATION   = 0.05
 DASH_DURATION  = DOT_DURATION * 3
 SYMBOL_GAP     = DOT_DURATION      # between dots/dashes
 LETTER_GAP     = DOT_DURATION * 3  # between letters
