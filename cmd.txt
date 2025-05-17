@@ -1,0 +1,1 @@
+python3 send.py 1 "A" --rate 0.5 --preamble --debug
